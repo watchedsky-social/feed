@@ -10,6 +10,7 @@ FROM base AS build
 
 WORKDIR /app
 COPY . /app/
+COPY .yarnrc.yml /app
 
 RUN yarn install --immutable
 RUN yarn build
@@ -18,7 +19,7 @@ FROM base AS release
 
 WORKDIR /app
 
-COPY --from=build /app/package.json /app/yarn.lock /app/
+COPY --from=build /app/package.json /app/yarn.lock /app/.yarn /app/.yarnrc.yml /app/
 COPY --from=build /app/dist /app/
 RUN yarn workspaces focus --production
 
