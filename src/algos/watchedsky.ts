@@ -1,12 +1,12 @@
-import { sql } from "kysely";
+import AtpAgent from "@atproto/api";
+import { PoolClient } from "pg";
 import { AppContext } from "../config";
 import {
-  QueryParams,
   OutputSchema as AlgoOutput,
+  QueryParams,
 } from "../lexicon/types/app/bsky/feed/getFeedSkeleton";
-import AtpAgent, { AppBskyActorGetProfile } from "@atproto/api";
+import { appLogger } from "../logging";
 import { errorFeed, noAlertsFoundFeed, noWatchIDFeed } from "./fallbackfeeds";
-import { PoolClient } from "pg";
 
 export const shortname = "watchedsky";
 
@@ -37,11 +37,11 @@ const alertQuery = (cursor?: string): string => {
   let query = alertQueryBase;
 
   if (cursor) {
-    query = `${query} ${alertQueryCursorCondition}`
+    query = `${query} ${alertQueryCursorCondition}`;
   }
 
   return `${query} ${alertQueryOrderLimits}`;
-}
+};
 
 export const handler = async (
   ctx: AppContext,
@@ -63,6 +63,7 @@ export const handler = async (
         }
       }
     } catch (e) {
+      appLogger.debug("NICE");
       return errorFeed;
     }
 
@@ -74,19 +75,22 @@ export const handler = async (
     try {
       client = await ctx.db.connect();
 
-      const vars: (string|number)[] = [watchID];
+      const vars: (string | number)[] = [watchID];
       if (params.cursor) {
         vars.push(params.cursor);
       }
       vars.push(params.limit);
 
+      const query = alertQuery(params.cursor);
+      appLogger.debug({ ctx: "algos.watchedsky", query });
       const result = await client.query(alertQuery(params.cursor), vars);
 
       if (result.rows.length === 0) {
+        appLogger.debug("LINE 90");
         return noAlertsFoundFeed;
       }
 
-      const out: AlgoOutput =  result.rows.reduce(
+      const out: AlgoOutput = result.rows.reduce(
         (output, row) => {
           output.feed.push({ post: row["uri"] });
         },
@@ -96,11 +100,13 @@ export const handler = async (
       const lastRow = result.rows.at(-1);
       out.cursor = lastRow["sent"];
     } catch (e) {
+      appLogger.debug("LINE 104");
       return errorFeed;
     } finally {
       client?.release();
     }
   }
 
+  appLogger.debug("LINE 111");
   return errorFeed;
 };

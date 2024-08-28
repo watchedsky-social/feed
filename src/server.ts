@@ -10,6 +10,7 @@ import feedGeneration from "./methods/feed-generation";
 import wellKnown from "./well-known";
 import packageJSON from "../package.json";
 import { PoolClient } from "pg";
+import { loggerMiddleware } from "./logging";
 
 export class FeedGenerator {
   public app: express.Application;
@@ -48,9 +49,10 @@ export class FeedGenerator {
     };
     feedGeneration(server, ctx);
     describeGenerator(server, ctx);
+    app.use(loggerMiddleware);
     app.use(server.xrpc.router);
     app.use(wellKnown(ctx));
-    app.get("/livez", (req, res) => {
+    app.get("/livez", (_, res) => {
       ctx.db
         .connect()
         .then((client: PoolClient) => {
@@ -61,10 +63,10 @@ export class FeedGenerator {
           res.status(500).json(e);
         });
     });
-    app.get("/readyz", (req, res) => {
+    app.get("/readyz", (_, res) => {
       res.sendStatus(200);
     });
-    app.get("/version", (req, res) => {
+    app.get("/version", (_, res) => {
       const kw = packageJSON.keywords.filter((k: string) =>
         k.startsWith("ref:"),
       );
