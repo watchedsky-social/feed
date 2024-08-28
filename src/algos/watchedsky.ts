@@ -14,8 +14,8 @@ const watchIDRegex = /🌩️👀 ([a-zA-Z0-9\-_]{12})/;
 
 const agent = new AtpAgent({ service: "https://public.api.bsky.app" });
 
-const alertQuery = `
-  SELECT a.skeet_info::jsonb->>'uri' AS uri
+const alertQueryBase = `
+  SELECT a.skeet_info::jsonb->>'uri' AS uri, a.sent AS sent
   FROM alerts a
   WHERE
     ST_Intersects(
@@ -28,7 +28,20 @@ const alertQuery = `
           LIMIT 1
         ), 0
       )
-    );`;
+    )`;
+
+const alertQueryCursorCondition = "AND a.sent < ?";
+const alertQueryOrderLimits = "ORDER BY a.sent DESC LIMIT ?;";
+
+const alertQuery = (cursor?: string): string => {
+  let query = alertQueryBase;
+
+  if (cursor) {
+    query = `${query} ${alertQueryCursorCondition}`
+  }
+
+  return `${query} ${alertQueryOrderLimits}`;
+}
 
 export const handler = async (
   ctx: AppContext,
@@ -60,18 +73,27 @@ export const handler = async (
     let client: PoolClient | undefined = undefined;
     try {
       client = await ctx.db.connect();
-      const result = await client.query(alertQuery, [watchID]);
+
+      const vars: (string|number)[] = [watchID];
+      if (params.cursor) {
+        vars.push(params.cursor);
+      }
+      vars.push(params.limit);
+
+      const result = await client.query(alertQuery(params.cursor), vars);
 
       if (result.rows.length === 0) {
         return noAlertsFoundFeed;
       }
 
-      return result.rows.reduce(
+      const out: AlgoOutput =  result.rows.reduce(
         (output, row) => {
           output.feed.push({ post: row["uri"] });
         },
         { feed: [] },
       );
+
+
     } catch (e) {
       return errorFeed;
     } finally {

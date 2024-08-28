@@ -1,9 +1,9 @@
-import { Client } from "pg";
+import { Client, Pool } from "pg";
 import { Database, DatabaseConfig } from "./db";
 import { DidResolver } from "@atproto/identity";
 
 export type AppContext = {
-  db: Database;
+  db: Pool;
   didResolver: DidResolver;
   cfg: Config;
 };

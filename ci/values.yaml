@@ -1,0 +1,5 @@
+name: feed
+key: ((feed-deploy-private-key))
+extra-build-params:
+  BUILD_ARG_VERSION: ((.:version))
+  BUILD_ARG_BUILD_ID: ((.:buildid))

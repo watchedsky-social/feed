@@ -6,6 +6,10 @@
   "repository": "git@github.com:watchedsky-social/feed.git",
   "author": "Josh Ghiloni <ghiloni@gmail.com>",
   "license": "AGPL-3.0-only",
+  "private": true,
+  "keywords": [
+    "ref:foo"
+  ],
   "scripts": {
     "publishFeed": "ts-node scripts/publishFeedGen.ts",
     "start": "ts-node src/index.ts",
