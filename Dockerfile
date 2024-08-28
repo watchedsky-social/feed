@@ -25,12 +25,13 @@ FROM base AS release
 
 WORKDIR /app
 
-COPY --from=build /app/package.json /app/yarn.lock /app/.yarn /app/.yarnrc.yml /app/
-COPY --from=build /app/dist /app/
+COPY --from=build /app/dist/ /app/
+COPY --from=build /app/yarn.lock /app
+COPY --from=build /app/.yarn* /app/
 RUN yarn workspaces focus --production
 
 RUN chown -R 65532:65532 /app
 
 USER 65532
 
-CMD [ "/app/index.js" ]
+CMD [ "/app/src/index.js" ]
