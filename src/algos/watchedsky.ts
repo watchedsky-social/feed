@@ -93,7 +93,8 @@ export const handler = async (
         { feed: [] },
       );
 
-
+      const lastRow = result.rows.at(-1);
+      out.cursor = lastRow["sent"];
     } catch (e) {
       return errorFeed;
     } finally {
