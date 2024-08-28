@@ -26,7 +26,7 @@ export default function (server: Server, ctx: AppContext) {
       ctx.didResolver,
     );
 
-    const body = await algo(ctx, params);
+    const body = await algo(ctx, params, requesterDid);
     return {
       encoding: "application/json",
       body: body,
