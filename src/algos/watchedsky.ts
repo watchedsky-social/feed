@@ -82,7 +82,7 @@ export const handler = async (
       vars.push(params.limit);
 
       const query = alertQuery(params.cursor);
-      appLogger.debug({ ctx: "algos.watchedsky", query });
+      appLogger.debug({ ctx: "algos.watchedsky", query: query.replaceAll(/\s+/g, " "), vars: vars });
       const result = await client.query(alertQuery(params.cursor), vars);
 
       if (result.rows.length === 0) {
@@ -100,7 +100,7 @@ export const handler = async (
       const lastRow = result.rows.at(-1);
       out.cursor = lastRow["sent"];
     } catch (e) {
-      appLogger.debug("LINE 104");
+      appLogger.debug({line: 104, error: e});
       return errorFeed;
     } finally {
       client?.release();
