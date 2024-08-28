@@ -28,6 +28,7 @@ WORKDIR /app
 COPY --from=build /app/dist/ /app/
 COPY --from=build /app/yarn.lock /app
 COPY --from=build /app/.yarn* /app/
+COPY --from=build /app/icon.png /app/
 RUN yarn workspaces focus --production
 
 RUN chown -R 65532:65532 /app
