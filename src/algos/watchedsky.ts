@@ -102,6 +102,7 @@ export const handler = async (
       const lastRow = result.rows.at(-1);
       out.cursor = lastRow["sent"];
     } catch (e) {
+      console.error(e);
       appLogger.debug({line: 104, error: e});
       return errorFeed;
     } finally {

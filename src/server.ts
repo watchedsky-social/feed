@@ -49,6 +49,7 @@ export class FeedGenerator {
     };
     feedGeneration(server, ctx);
     describeGenerator(server, ctx);
+    app.enable("trust proxy");
     app.use(loggerMiddleware);
     app.use(server.xrpc.router);
     app.use(wellKnown(ctx));

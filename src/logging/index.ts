@@ -1,10 +1,40 @@
 import { NextFunction, Request, Response } from "express";
-import winston, { createLogger } from "winston";
+import winston, { createLogger, format } from "winston";
 
 const logLevel = (process.env.FEEDGEN_LOG_LEVEL ?? "info").toLowerCase();
 
+// taken from https://github.com/winstonjs/logform/issues/290
+interface ParsedError {
+  readonly message: string;
+  readonly originalLine: number;
+  readonly originalColumn: number;
+  readonly line: number;
+  readonly column: number;
+  readonly sourceURL: string;
+  readonly stack: string;
+}
+
+/** Turns an error into a plain object. */
+function parseError(err: Error): ParsedError {
+  return JSON.parse(
+    JSON.stringify(err, Object.getOwnPropertyNames(err)),
+  ) as ParsedError;
+}
+
+const jsonReplacer = (key: string, value: unknown): any => {
+  if (value instanceof Error) {
+    return parseError(value);
+  }
+
+  return value;
+};
+
 export const appLogger = createLogger({
-  format: winston.format.json(),
+  format: format.combine(
+    format.timestamp(),
+    format.colorize(),
+    format.json({ deterministic: true, space: 0, replacer: jsonReplacer }),
+  ),
   level: logLevel,
   handleExceptions: true,
   handleRejections: true,
