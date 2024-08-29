@@ -24,23 +24,25 @@ const alertQueryBase = `
         (
           SELECT s.border AS border
           FROM saved_areas s
-          WHERE id = ?
+          WHERE id = $1
           LIMIT 1
         ), 0
       )
     )`;
 
-const alertQueryCursorCondition = "AND a.sent < ?";
-const alertQueryOrderLimits = "ORDER BY a.sent DESC LIMIT ?;";
+const alertQueryCursorCondition = "AND a.sent < $2";
+const alertQueryOrderLimits = (n: number): string => `ORDER BY a.sent DESC LIMIT $${n};`
 
 const alertQuery = (cursor?: string): string => {
   let query = alertQueryBase;
 
+  let n = 2;
   if (cursor) {
     query = `${query} ${alertQueryCursorCondition}`;
+    n = 3;
   }
 
-  return `${query} ${alertQueryOrderLimits}`;
+  return `${query} ${alertQueryOrderLimits(n)}`;
 };
 
 export const handler = async (
