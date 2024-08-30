@@ -14,24 +14,15 @@ const watchIDRegex = /🌩️👀 ([a-zA-Z0-9\-_]{12})/;
 
 const agent = new AtpAgent({ service: "https://public.api.bsky.app" });
 
-const alertQueryBase = `
-  SELECT a.skeet_info::jsonb->>'uri' AS uri, a.sent AS sent
-  FROM alerts a
-  WHERE
-    ST_Intersects(
-      ST_Buffer(a.border,0),
-      ST_Buffer(
-        (
-          SELECT s.border AS border
-          FROM saved_areas s
-          WHERE id = $1
-          LIMIT 1
-        ), 0
-      )
-    )`;
+const alertQueryBase =
+  "WITH target_area AS (SELECT border FROM saved_areas WHERE ID = '$1' LIMIT 1) " +
+  "SELECT a.skeet_info::jsonb->>'uri' AS uri, EXTRACT(EPOCH FROM a.sent) * 1000 AS sent " +
+  "FROM alerts a, target_area t WHERE skeet_info IS NOT NULL AND a.border && t.border " +
+  "AND ST_Intersects(a.border, t.border)";
 
-const alertQueryCursorCondition = "AND a.sent < $2";
-const alertQueryOrderLimits = (n: number): string => `ORDER BY a.sent DESC LIMIT $${n};`
+const alertQueryCursorCondition = "AND sent < $2";
+const alertQueryOrderLimits = (n: number): string =>
+  `ORDER BY sent DESC LIMIT $${n};`;
 
 const alertQuery = (cursor?: string): string => {
   let query = alertQueryBase;
@@ -84,11 +75,14 @@ export const handler = async (
       vars.push(params.limit);
 
       const query = alertQuery(params.cursor);
-      appLogger.debug({ ctx: "algos.watchedsky", query: query.replaceAll(/\s+/g, " "), vars: vars });
+      appLogger.debug({
+        ctx: "algos.watchedsky",
+        query,
+        vars,
+      });
       const result = await client.query(alertQuery(params.cursor), vars);
 
       if (result.rows.length === 0) {
-        appLogger.debug("LINE 90");
         return noAlertsFoundFeed;
       }
 
@@ -102,14 +96,12 @@ export const handler = async (
       const lastRow = result.rows.at(-1);
       out.cursor = lastRow["sent"];
     } catch (e) {
-      console.error(e);
-      appLogger.debug({line: 104, error: e});
+      appLogger.debug({ line: 104, error: e });
       return errorFeed;
     } finally {
       client?.release();
     }
   }
 
-  appLogger.debug("LINE 111");
   return errorFeed;
 };
