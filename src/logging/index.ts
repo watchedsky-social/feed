@@ -32,7 +32,6 @@ const jsonReplacer = (key: string, value: unknown): any => {
 export const appLogger = createLogger({
   format: format.combine(
     format.timestamp(),
-    format.colorize(),
     format.json({ deterministic: true, space: 0, replacer: jsonReplacer }),
   ),
   level: logLevel,

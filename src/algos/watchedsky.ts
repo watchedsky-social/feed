@@ -15,14 +15,14 @@ const watchIDRegex = /🌩️👀 ([a-zA-Z0-9\-_]{12})/;
 const agent = new AtpAgent({ service: "https://public.api.bsky.app" });
 
 const alertQueryBase =
-  "WITH target_area AS (SELECT border FROM saved_areas WHERE ID = '$1' LIMIT 1) " +
+  "WITH target_area AS (SELECT border FROM saved_areas WHERE ID = $1::text LIMIT 1) " +
   "SELECT a.skeet_info::jsonb->>'uri' AS uri, EXTRACT(EPOCH FROM a.sent) * 1000 AS sent " +
   "FROM alerts a, target_area t WHERE skeet_info IS NOT NULL AND a.border && t.border " +
   "AND ST_Intersects(a.border, t.border)";
 
-const alertQueryCursorCondition = "AND sent < $2";
+const alertQueryCursorCondition = "AND sent < $2::numeric";
 const alertQueryOrderLimits = (n: number): string =>
-  `ORDER BY sent DESC LIMIT $${n};`;
+  `ORDER BY sent DESC LIMIT $${n}::int;`;
 
 const alertQuery = (cursor?: string): string => {
   let query = alertQueryBase;
