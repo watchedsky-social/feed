@@ -86,15 +86,14 @@ export const handler = async (
         return noAlertsFoundFeed;
       }
 
-      const out: AlgoOutput = result.rows.reduce(
-        (output, row) => {
-          output.feed.push({ post: row["uri"] });
-        },
-        { feed: [] },
-      );
+      const feed = result.rows.map((row) => ({post: row["uri"] as string}));
 
       const lastRow = result.rows.at(-1);
-      out.cursor = lastRow["sent"];
+      const cursor = lastRow["sent"];
+      return {
+        feed,
+        cursor,
+      }
     } catch (e) {
       appLogger.debug({ line: 104, error: e });
       return errorFeed;
