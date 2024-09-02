@@ -36,6 +36,13 @@ const alertQuery = (cursor?: string): string => {
   return `${query} ${alertQueryOrderLimits(n)}`;
 };
 
+const saveDIDWID = async (client: PoolClient, did: string, wid: string): Promise<void> => {
+  const query = "INSERT INTO didwids (did, wid) VALUES ($1, $2) ON CONFLICT DO NOTHING;";
+  const vars = [did, wid];
+
+  await client.query(query, vars);
+}
+
 export const handler = async (
   ctx: AppContext,
   params: QueryParams,
@@ -56,7 +63,6 @@ export const handler = async (
         }
       }
     } catch (e) {
-      appLogger.debug("NICE");
       return errorFeed;
     }
 
@@ -67,6 +73,8 @@ export const handler = async (
     let client: PoolClient | undefined = undefined;
     try {
       client = await ctx.db.connect();
+
+      await saveDIDWID(client, requesterDid, watchID)
 
       const vars: (string | number)[] = [watchID];
       if (params.cursor) {
@@ -91,8 +99,8 @@ export const handler = async (
       const lastRow = result.rows.at(-1);
       const cursor = lastRow["sent"];
       return {
-        feed,
-        cursor,
+        feed: feed,
+        cursor: feed.length < params.limit ? undefined : cursor,
       }
     } catch (e) {
       appLogger.debug({ line: 104, error: e });
