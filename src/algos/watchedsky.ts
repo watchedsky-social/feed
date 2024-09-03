@@ -36,12 +36,35 @@ const alertQuery = (cursor?: string): string => {
   return `${query} ${alertQueryOrderLimits(n)}`;
 };
 
-const saveDIDWID = async (client: PoolClient, did: string, wid: string): Promise<void> => {
-  const query = "INSERT INTO didwids (did, wid) VALUES ($1, $2) ON CONFLICT DO NOTHING;";
+const saveDIDWID = async (
+  client: PoolClient,
+  did: string,
+  wid: string,
+): Promise<void> => {
+  const query =
+    "INSERT INTO didwids (did, wid) VALUES ($1, $2) ON CONFLICT(did) DO UPDATE SET wid=EXCLUDED.wid;";
   const vars = [did, wid];
 
   await client.query(query, vars);
-}
+};
+
+const findWIDinDB = async (
+  client: PoolClient,
+  did: string,
+): Promise<string> => {
+  const query = "SELECT wid FROM didwids WHERE did = $1;";
+
+  try {
+    const response = await client.query(query, [did]);
+    if (response.rows.length === 0) {
+      return "";
+    }
+
+    return response.rows[0]["wid"];
+  } catch (e) {
+    return "";
+  }
+};
 
 export const handler = async (
   ctx: AppContext,
@@ -51,15 +74,22 @@ export const handler = async (
   if (requesterDid) {
     let watchID: string = "";
 
-    try {
-      const profile = await agent.api.app.bsky.actor.getProfile({
-        actor: requesterDid,
-      });
+    let client: PoolClient | undefined = undefined;
 
-      if (profile.data.description) {
-        const matches = watchIDRegex.exec(profile.data.description);
-        if (matches?.length === 2) {
-          watchID = matches[1];
+    try {
+      client = await ctx.db.connect();
+      watchID = await findWIDinDB(client, requesterDid);
+
+      if (watchID === "") {
+        const profile = await agent.api.app.bsky.actor.getProfile({
+          actor: requesterDid,
+        });
+
+        if (profile.data.description) {
+          const matches = watchIDRegex.exec(profile.data.description);
+          if (matches?.length === 2) {
+            watchID = matches[1];
+          }
         }
       }
     } catch (e) {
@@ -70,11 +100,10 @@ export const handler = async (
       return noWatchIDFeed;
     }
 
-    let client: PoolClient | undefined = undefined;
     try {
       client = await ctx.db.connect();
 
-      await saveDIDWID(client, requesterDid, watchID)
+      await saveDIDWID(client, requesterDid, watchID);
 
       const vars: (string | number)[] = [watchID];
       if (params.cursor) {
@@ -94,14 +123,14 @@ export const handler = async (
         return noAlertsFoundFeed;
       }
 
-      const feed = result.rows.map((row) => ({post: row["uri"] as string}));
+      const feed = result.rows.map((row) => ({ post: row["uri"] as string }));
 
       const lastRow = result.rows.at(-1);
       const cursor = lastRow["sent"];
       return {
         feed: feed,
         cursor: feed.length < params.limit ? undefined : cursor,
-      }
+      };
     } catch (e) {
       appLogger.debug({ line: 104, error: e });
       return errorFeed;
